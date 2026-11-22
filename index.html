@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>فرسان الأمير - لعبة الألغاز التاريخية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Cairo', sans-serif;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            margin: auto;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border: 4px solid #d97706;
+            background-color: #fef3c7;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        .btn-gold {
+            background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+            border: 2px solid #fef3c7;
+            box-shadow: 0 4px 0 #92400e, 0 8px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-gold:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #92400e, 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .btn-green {
+            background: linear-gradient(180deg, #10b981 0%, #047857 100%);
+            border: 2px solid #d1fae5;
+            box-shadow: 0 4px 0 #064e3b, 0 8px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-green:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #064e3b;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            80% { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes pulseHeart {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        .heart-beat {
+            animation: pulseHeart 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="p-2 sm:p-4">
+
+    <!-- الترويسة الرسمية للمكتبة -->
+    <header class="w-full max-w-[1000px] mx-auto mb-3 bg-emerald-950/90 border-2 border-amber-500/70 rounded-2xl p-3 text-center shadow-lg">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-2 px-2">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">📚</span>
+                <div class="text-right">
+                    <h1 class="text-amber-400 font-extrabold text-sm sm:text-base md:text-lg leading-tight">
+                        المكتبة الرئيسية للمطالعة العمومية المجاهد تركي قويدر - ولاية غليزان
+                    </h1>
+                    <p class="text-emerald-200 text-xs sm:text-sm font-semibold">
+                        إحياء ذكرى المبايعة الأولى للأمير عبد القادر الجزائري (27 نوفمبر 1832م)
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="soundToggle" class="bg-emerald-800 hover:bg-emerald-700 text-amber-300 border border-amber-500/50 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1 transition">
+                    <span id="soundIcon">🔊</span>
+                    <span id="soundText">الصوت مفعل</span>
+                </button>
+                <button id="restartTopBtn" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition shadow">
+                    إعادة اللعب 🔄
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- حاوية اللعبة الرئيسية -->
+    <div id="game-wrapper">
+        
+        <!-- شريط الحالة العلوي داخل اللعبة (القلوب، التقدم، النقاط) -->
+        <div id="hud-bar" class="bg-gradient-to-l from-emerald-900 via-emerald-800 to-emerald-900 text-white px-4 py-2.5 flex flex-wrap items-center justify-between border-b-2 border-amber-500 gap-2">
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1" id="hearts-container" title="القلوب المتبقية">
+                    <!-- يتم توليد القلوب برمجياً -->
+                </div>
+                <div id="player-badge" class="hidden sm:flex items-center gap-1.5 bg-emerald-950/80 border border-amber-400/50 px-3 py-1 rounded-full text-amber-200 font-bold text-xs">
+                    <span>🎖️ الجندي:</span>
+                    <span id="player-name-hud" class="text-white">بطل المكتبة</span>
+                </div>
+            </div>
+
+            <div class="bg-emerald-950/80 border border-amber-400/50 px-3 py-1 rounded-full text-amber-300 font-bold text-xs sm:text-sm">
+                اللغز: <span id="question-counter" class="text-white">1</span> / <span id="total-questions">12</span>
+            </div>
+
+            <div class="bg-amber-500/20 border border-amber-400 px-3 py-1 rounded-full text-amber-300 font-bold text-xs sm:text-sm">
+                النقاط: <span id="score-display" class="text-white">0</span> ⭐
+            </div>
+        </div>
+
+        <!-- صندوق عرض اللغز -->
+        <div id="riddle-box" class="bg-amber-50 border-b-2 border-amber-300 px-4 py-3 sm:px-6 sm:py-4 text-center relative shadow-inner">
+            <span id="riddle-badge" class="inline-block bg-emerald-700 text-amber-200 text-xs font-bold px-3 py-0.5 rounded-full mb-1.5">
+                لغز تاريخي
+            </span>
+            <p id="riddle-text" class="text-emerald-950 font-extrabold text-base sm:text-lg md:text-xl leading-relaxed">
+                جاري تحميل اللغز...
+            </p>
+            <p class="text-amber-800/80 text-xs mt-1 font-semibold">
+                🎯 صوّب نحو الهدف الذي يحمل الإجابة الصحيحة واضغط للإطلاق!
+            </p>
+        </div>
+
+        <!-- منطقة اللعب (Canvas) -->
+        <div id="canvas-container" class="relative w-full h-[360px] sm:h-[420px] md:h-[460px]">
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- العلامة المائية الثابتة طيلة اللعبة من البداية إلى النهاية -->
+            <div class="pointer-events-none select-none absolute bottom-2 left-3 z-40 bg-emerald-950/35 backdrop-blur-[1px] border border-amber-400/30 px-2.5 py-0.5 rounded-lg text-amber-200/85 font-black text-xs sm:text-sm tracking-widest shadow">
+                SM/1628
+            </div>
+
+            <!-- شاشة البداية -->
+            <div id="start-overlay" class="absolute inset-0 bg-emerald-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 sm:p-6 text-center z-20 overflow-y-auto">
+                <div class="bg-amber-50 border-4 border-amber-500 rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl animate-pop">
+                    <div class="text-4xl sm:text-5xl mb-2">🇩🇿 ⚔️ 📜</div>
+                    <h2 class="text-2xl sm:text-3xl font-black text-emerald-900 mb-1.5">
+                        فرسان الأمير عبد القادر
+                    </h2>
+                    <p class="text-emerald-800 font-bold text-xs sm:text-sm mb-3 leading-relaxed">
+                        مرحباً بكم يا أبطال <span class="text-amber-700">مكتبة المجاهد تركي قويدر بغليزان</span>! 
+                        سجّل اسمك أيها الجندي الصغير وساعد جيش الأمير في إصابة الأهداف الصحيحة.
+                    </p>
+
+                    <!-- حقل إدخال اسم الجندي الصغير -->
+                    <div class="mb-4 text-right">
+                        <label for="soldierNameInput" class="block text-emerald-950 font-extrabold text-xs sm:text-sm mb-1">
+                            🎖️ اكتب اسمك أيها الجندي الصغير:
+                        </label>
+                        <input type="text" id="soldierNameInput" maxlength="25" placeholder="مثال: أحمد، سارة، يوسف..."
+                            class="w-full px-4 py-2.5 rounded-xl border-2 border-amber-500 bg-white text-emerald-950 font-bold text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-emerald-600 text-center shadow-inner">
+                        <p id="nameErrorMsg" class="hidden text-red-600 font-bold text-xs mt-1 text-center">
+                            ⚠️ من فضلك اكتب اسمك أولاً للانطلاق في المغامرة!
+                        </p>
+                    </div>
+
+                    <div class="bg-amber-100/80 rounded-2xl p-3 mb-4 text-right text-xs sm:text-sm text-emerald-900 space-y-1 border border-amber-300">
+                        <div>🎯 <strong>طريقة اللعب:</strong> صوّب نحو الهدف الصحيح واضغط لإطلاق السهم.</div>
+                        <div>🌟 <strong>الإصابة الصحيحة:</strong> تظهر رسالة <span class="text-emerald-700 font-extrabold">"أحسنت!"</span> وتنتقل للغز الموالي.</div>
+                        <div>❤️ <strong>الإصابة الخاطئة:</strong> تفقد قلباً واحداً، فكن دقيقاً في التصويب!</div>
+                    </div>
+                    <button id="startBtn" class="btn-gold text-emerald-950 font-black text-lg sm:text-xl px-8 py-3 rounded-2xl w-full sm:w-auto cursor-pointer">
+                        ابدأ المغامرة الآن 🚀
+                    </button>
+                </div>
+            </div>
+
+            <!-- شاشة النتيجة الفورية (أحسنت / حاول مجدداً) -->
+            <div id="feedback-overlay" class="hidden absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-10 pointer-events-none">
+                <div id="feedback-card" class="bg-white border-4 rounded-3xl px-8 py-5 text-center shadow-2xl animate-pop max-w-md">
+                    <div id="feedback-emoji" class="text-5xl mb-2">🌟</div>
+                    <h3 id="feedback-title" class="text-3xl font-black mb-1">أحسنت!</h3>
+                    <p id="feedback-sub" class="text-base font-bold text-gray-700"></p>
+                </div>
+            </div>
+
+            <!-- شاشة نهاية اللعبة (الفوز أو نفاد القلوب) -->
+            <div id="end-overlay" class="hidden absolute inset-0 bg-emerald-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30">
+                <div class="bg-amber-50 border-4 border-amber-500 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-pop">
+                    <div id="end-emoji" class="text-6xl mb-3">🏆</div>
+                    <h2 id="end-title" class="text-2xl sm:text-3xl font-black text-emerald-900 mb-2">
+                        مبارك لك يا بطل!
+                    </h2>
+                    <div id="end-soldier-badge" class="inline-block bg-emerald-100 border border-emerald-400 text-emerald-900 font-extrabold text-sm px-4 py-1 rounded-full mb-2">
+                        الجندي البطل: <span id="final-soldier-name">بطل المكتبة</span>
+                    </div>
+                    <p id="end-message" class="text-emerald-800 font-bold text-sm sm:text-base mb-4 leading-relaxed">
+                        لقد أتممت التحدي بنجاح وأثبتّ معرفتك بتاريخ الأمير عبد القادر الجزائري.
+                    </p>
+                    <div class="bg-emerald-900 text-amber-300 rounded-2xl p-4 mb-5 font-black text-xl">
+                        النتيجة النهائية: <span id="final-score" class="text-white">0</span> نقطة
+                    </div>
+                    <button id="playAgainBtn" class="btn-green text-white font-black text-lg px-8 py-3 rounded-2xl w-full cursor-pointer">
+                        العب مرة أخرى 🔄
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- تذييل بسيط -->
+    <footer class="w-full max-w-[1000px] mx-auto mt-3 text-center text-emerald-200/80 text-xs font-semibold">
+        نشاط ثقافي تفاعلي للأطفال • المكتبة الرئيسية للمطالعة العمومية المجاهد تركي قويدر - غليزان
+    </footer>
+
+    <script>
+        /**
+         * قاعدة بيانات الألغاز المستلهمة من البيعة الأولى للأمير عبد القادر
+         * كل لغز يحتوي على النص، التصنيف، وثلاثة خيارات مع تحديد الإجابة الصحيحة
+         */
+        const riddlesData = [
+            {
+                badge: "التاريخ والمكان",
+                question: "تحت شجرةٍ عريقةٍ في سهل غريس بويع الأمير عبد القادر سنة 1832م. ما اسم هذه الشجرة؟",
+                options: ["شجرة الدردار", "شجرة الزيتون", "شجرة الأرز"],
+                correctIndex: 0
+            },
+            {
+                badge: "قيادة البيعة",
+                question: "من هو الفقيه ووالد الأمير الذي قاد المبايعين ودعا له في خطبة البيعة الشهيرة؟",
+                options: ["الشيخ البشير الإبراهيمي", "الشيخ محيي الدين بن مصطفى", "الشيخ عبد الحميد بن باديس"],
+                correctIndex: 1
+            },
+            {
+                badge: "العاصمة الأولى",
+                question: "ما المدينة الجزائرية العريقة التي اتخذها الأمير عبد القادر عاصمةً أولى لدولته الفتية؟",
+                options: ["مدينة وهران", "مدينة قسنطينة", "مدينة معسكر"],
+                correctIndex: 2
+            },
+            {
+                badge: "يوم البيعة",
+                question: "في أي يوم وشهر من سنة 1832م خُلّدت المبايعة الأولى للأمير عبد القادر؟",
+                options: ["27 نوفمبر", "5 جويلية", "1 نوفمبر"],
+                correctIndex: 0
+            },
+            {
+                badge: "شخصية الأمير",
+                question: "بماذا لُقّب الأمير عبد القادر، وقد جمع بين سيف الفارس وقلم الشاعر والعالم؟",
+                options: ["سلطان الشرق", "ناصر الدين", "فارس الصحراء"],
+                correctIndex: 1
+            },
+            {
+                badge: "الدولة المتنقلة",
+                question: "حصنٌ متنقّل من الخيام يضم الإدارة والمكتبة والأسواق رافق الأمير في حله وترحاله. ما اسمه؟",
+                options: ["القصبة", "القلعة", "الزمالة"],
+                correctIndex: 2
+            },
+            {
+                badge: "التأسيس والنشأة",
+                question: "ما اسم الزاوية التي نشأ فيها الأمير عبد القادر وتلقّى علومه الأولى قرب معسكر؟",
+                options: ["الزاوية القادرية بالقيطنة", "الزاوية الرحمانية", "الزاوية التيجانية"],
+                correctIndex: 0
+            },
+            {
+                badge: "الصناعات الحربية",
+                question: "أنشأ الأمير مصانع للبارود والمدافع والرصاص ليؤمّن حاجة جيشه بنفسه. ماذا يسمى هذا التوجه؟",
+                options: ["التجارة البحرية", "الاكتفاء الذاتي العسكري", "الاستيراد الخارجي"],
+                correctIndex: 1
+            },
+            {
+                badge: "بناء المؤسسات",
+                question: "عيّن الأمير قضاة يفصلون في النزاعات وعلماء يفتون وأمناء للزكاة. ما الركيزة التي يعبّر عنها ذلك؟",
+                options: ["بناء الموانئ", "تنظيم القوافل", "تنظيم الإدارة والقضاء"],
+                correctIndex: 2
+            },
+            {
+                badge: "أخلاق المقاومة",
+                question: "اتّسمت معارك الأمير بحماية الأسرى وعدم الاعتداء على المدنيين. بماذا عُرفت هذه المواقف؟",
+                options: ["أخلاقيات الحرب الإنسانية", "المعاهدات التجارية", "الرحلات العلمية"],
+                correctIndex: 0
+            },
+            {
+                badge: "رمزية العهد",
+                question: "شيءٌ يُعطى ولا يُشترى، يُكتب بالقلوب قبل الأقلام، وكان ميثاق وفاءٍ وتضحية مع الأمير. ما هو؟",
+                options: ["الكنز", "العهد والبيعة", "التاج"],
+                correctIndex: 1
+            },
+            {
+                badge: "سلاح الحق",
+                question: "سلاحٌ إذا أُغمِد دلّ على السلم، وإذا سُلّ في الحقّ صار عزّاً وكرامة في مقاومة الأمير. ما هو؟",
+                options: ["الرمح", "الدرع", "السيف"],
+                correctIndex: 2
+            }
+        ];
+
+        // متغيرات حالة اللعبة
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let maxHearts = 3;
+        let hearts = maxHearts;
+        let gameState = 'START'; // START, PLAYING, FEEDBACK, END
+        let soundEnabled = true;
+        let shuffledRiddles = [];
+        let playerName = "بطل المكتبة";
+
+        // عناصر الواجهة
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startOverlay = document.getElementById('start-overlay');
+        const endOverlay = document.getElementById('end-overlay');
+        const feedbackOverlay = document.getElementById('feedback-overlay');
+        const feedbackCard = document.getElementById('feedback-card');
+        const feedbackEmoji = document.getElementById('feedback-emoji');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const feedbackSub = document.getElementById('feedback-sub');
+        const soldierNameInput = document.getElementById('soldierNameInput');
+        const nameErrorMsg = document.getElementById('nameErrorMsg');
+        const playerNameHud = document.getElementById('player-name-hud');
+        const playerBadge = document.getElementById('player-badge');
+
+        const riddleBadge = document.getElementById('riddle-badge');
+        const riddleText = document.getElementById('riddle-text');
+        const questionCounter = document.getElementById('question-counter');
+        const totalQuestionsEl = document.getElementById('total-questions');
+        const scoreDisplay = document.getElementById('score-display');
+        const heartsContainer = document.getElementById('hearts-container');
+
+        // إعداد الصوت باستخدام Tone.js (بدون ملفات خارجية)
+        let synth = null;
+        function initAudio() {
+            if (!synth && typeof Tone !== 'undefined') {
+                synth = new Tone.PolySynth(Tone.Synth).toDestination();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+                const now = Tone.now();
+                if (type === 'shoot') {
+                    synth.triggerAttackRelease("G4", "16n", now);
+                    synth.triggerAttackRelease("C5", "16n", now + 0.05);
+                } else if (type === 'correct') {
+                    synth.triggerAttackRelease(["C5", "E5", "G5"], "8n", now);
+                    synth.triggerAttackRelease(["C6"], "4n", now + 0.15);
+                } else if (type === 'wrong') {
+                    synth.triggerAttackRelease(["E3", "Bb2"], "4n", now);
+                } else if (type === 'win') {
+                    synth.triggerAttackRelease("C5", "8n", now);
+                    synth.triggerAttackRelease("E5", "8n", now + 0.12);
+                    synth.triggerAttackRelease("G5", "8n", now + 0.24);
+                    synth.triggerAttackRelease("C6", "2n", now + 0.36);
+                }
+            } catch (e) {
+                // تجاهل أخطاء الصوت في حال عدم تفاعل المستخدم بعد
+            }
+        }
+
+        // كائنات الرسم والحركة داخل Canvas
+        let aimX = 0;
+        let aimY = 0;
+        let targets = [];
+        let projectiles = [];
+        let particles = [];
+        let clouds = [
+            { x: 100, y: 45, speed: 0.25, scale: 0.9 },
+            { x: 450, y: 30, speed: 0.18, scale: 1.1 },
+            { x: 780, y: 55, speed: 0.3, scale: 0.8 }
+        ];
+
+        // ضبط أبعاد Canvas لتناسب الشاشة
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            if (aimX === 0 && aimY === 0) {
+                aimX = canvas.width / 2;
+                aimY = canvas.height * 0.4;
+            }
+            layoutTargets();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // ترتيب الأهداف الثلاثة في الجزء العلوي من ساحة اللعب
+        function layoutTargets() {
+            if (!shuffledRiddles[currentQuestionIndex]) return;
+            const currentQ = shuffledRiddles[currentQuestionIndex];
+            const w = canvas.width;
+            const h = canvas.height;
+            const count = currentQ.options.length;
+
+            // حساب أبعاد الهدف بشكل متجاوب
+            const targetWidth = Math.min(w * 0.29, 250);
+            const targetHeight = Math.min(h * 0.22, 82);
+            const spacing = (w - targetWidth * count) / (count + 1);
+
+            targets = currentQ.options.map((optText, idx) => {
+                const baseX = spacing + idx * (targetWidth + spacing) + targetWidth / 2;
+                const baseY = h * 0.24;
+                return {
+                    index: idx,
+                    text: optText,
+                    isCorrect: idx === currentQ.correctIndex,
+                    x: baseX,
+                    y: baseY,
+                    baseY: baseY,
+                    width: targetWidth,
+                    height: targetHeight,
+                    phase: idx * 2.1, // حركة تموج خفيفة للأهداف
+                    hitState: null // 'correct' | 'wrong' | null
+                };
+            });
+        }
+
+        // تحديث عرض القلوب
+        function updateHeartsUI() {
+            heartsContainer.innerHTML = '';
+            for (let i = 0; i < maxHearts; i++) {
+                const span = document.createElement('span');
+                span.className = 'text-xl sm:text-2xl transition-transform duration-300 ' + (i < hearts ? 'heart-beat' : 'opacity-30 grayscale');
+                span.textContent = '❤️';
+                heartsContainer.appendChild(span);
+            }
+        }
+
+        // تحميل اللغز الحالي
+        function loadQuestion() {
+            const q = shuffledRiddles[currentQuestionIndex];
+            riddleBadge.textContent = `لغز ${currentQuestionIndex + 1} • ${q.badge}`;
+            riddleText.textContent = q.question;
+            questionCounter.textContent = currentQuestionIndex + 1;
+            totalQuestionsEl.textContent = shuffledRiddles.length;
+            projectiles = [];
+            layoutTargets();
+        }
+
+        // بدء لعبة جديدة
+        function startGame() {
+            const enteredName = soldierNameInput.value.trim();
+            if (!enteredName && gameState === 'START') {
+                nameErrorMsg.classList.remove('hidden');
+                soldierNameInput.focus();
+                return;
+            }
+            nameErrorMsg.classList.add('hidden');
+            if (enteredName) {
+                playerName = enteredName;
+            }
+            playerNameHud.textContent = playerName;
+            playerBadge.classList.remove('hidden');
+
+            // خلط ترتيب الألغاز مع الحفاظ على التنوع أو تركها مرتبة بسلاسة
+            shuffledRiddles = [...riddlesData];
+            currentQuestionIndex = 0;
+            score = 0;
+            hearts = maxHearts;
+            scoreDisplay.textContent = score;
+            updateHeartsUI();
+            startOverlay.classList.add('hidden');
+            endOverlay.classList.add('hidden');
+            feedbackOverlay.classList.add('hidden');
+            gameState = 'PLAYING';
+            resizeCanvas();
+            loadQuestion();
+        }
+
+        // إطلاق السهم / المقذوف نحو نقطة النقر أو الهدف
+        function fireAt(tx, ty) {
+            if (gameState !== 'PLAYING') return;
+            if (projectiles.length > 0) return; // منع إطلاق أكثر من سهم في نفس اللحظة
+
+            aimX = tx;
+            aimY = ty;
+
+            const soldierX = canvas.width / 2;
+            const soldierY = canvas.height - 65;
+
+            const angle = Math.atan2(ty - soldierY, tx - soldierX);
+            const speed = Math.max(14, canvas.width * 0.022);
+
+            projectiles.push({
+                x: soldierX,
+                y: soldierY - 15,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                angle: angle,
+                targetX: tx,
+                targetY: ty
+            });
+
+            playSound('shoot');
+        }
+
+        // توليد جزيئات احتفالية عند الإصابة
+        function spawnParticles(x, y, color) {
+            for (let i = 0; i < 24; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 5;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 1.0,
+                    color: color,
+                    size: 4 + Math.random() * 5
+                });
+            }
+        }
+
+        // معالجة إصابة الهدف
+        function handleTargetHit(target) {
+            gameState = 'FEEDBACK';
+
+            if (target.isCorrect) {
+                target.hitState = 'correct';
+                score += 10;
+                scoreDisplay.textContent = score;
+                spawnParticles(target.x, target.y, '#10b981');
+                spawnParticles(target.x, target.y, '#fbbf24');
+                playSound('correct');
+
+                // إظهار رسالة "أحسنت"
+                feedbackCard.className = "bg-emerald-50 border-4 border-emerald-500 rounded-3xl px-8 py-5 text-center shadow-2xl animate-pop max-w-md";
+                feedbackEmoji.textContent = "🌟👏";
+                feedbackTitle.className = "text-3xl sm:text-4xl font-black text-emerald-700 mb-1";
+                feedbackTitle.textContent = `أحسنت يا ${playerName}!`;
+                feedbackSub.textContent = `إجابة صحيحة: ${target.text}`;
+                feedbackOverlay.classList.remove('hidden');
+
+                setTimeout(() => {
+                    feedbackOverlay.classList.add('hidden');
+                    currentQuestionIndex++;
+                    if (currentQuestionIndex >= shuffledRiddles.length) {
+                        endGame(true);
+                    } else {
+                        gameState = 'PLAYING';
+                        loadQuestion();
+                    }
+                }, 1500);
+
+            } else {
+                target.hitState = 'wrong';
+                hearts--;
+                updateHeartsUI();
+                spawnParticles(target.x, target.y, '#ef4444');
+                playSound('wrong');
+
+                // إظهار رسالة التنبيه عند الخطأ
+                feedbackCard.className = "bg-red-50 border-4 border-red-500 rounded-3xl px-8 py-5 text-center shadow-2xl animate-pop max-w-md";
+                feedbackEmoji.textContent = "💔🎯";
+                feedbackTitle.className = "text-2xl sm:text-3xl font-black text-red-600 mb-1";
+                feedbackTitle.textContent = `انتبه يا ${playerName}!`;
+                feedbackSub.textContent = hearts > 0
+                    ? "فقدت قلباً واحداً.. أعد التصويب نحو الإجابة الصحيحة!"
+                    : "نفدت القلوب! حاول مرة أخرى يا بطل.";
+                feedbackOverlay.classList.remove('hidden');
+
+                setTimeout(() => {
+                    feedbackOverlay.classList.add('hidden');
+                    if (hearts <= 0) {
+                        endGame(false);
+                    } else {
+                        target.hitState = null;
+                        gameState = 'PLAYING';
+                    }
+                }, 1500);
+            }
+        }
+
+        // إنهاء اللعبة وعرض النتيجة النهائية
+        function endGame(isWin) {
+            gameState = 'END';
+            const endEmoji = document.getElementById('end-emoji');
+            const endTitle = document.getElementById('end-title');
+            const endMessage = document.getElementById('end-message');
+            const finalScore = document.getElementById('final-score');
+            const finalSoldierName = document.getElementById('final-soldier-name');
+
+            finalScore.textContent = score;
+            finalSoldierName.textContent = playerName;
+
+            if (isWin) {
+                playSound('win');
+                endEmoji.textContent = "🏆🇩🇿";
+                endTitle.textContent = `أحسنت يا فارس الأمير، ${playerName}!`;
+                endMessage.textContent = "لقد أجبت عن جميع ألغاز المبايعة الأولى للأمير عبد القادر بنجاح. نفخر بك في مكتبة المجاهد تركي قويدر بغليزان!";
+            } else {
+                endEmoji.textContent = "📜💪";
+                endTitle.textContent = `محاولة رائعة يا ${playerName}!`;
+                endMessage.textContent = "لقد نفدت القلوب هذه المرة، لكن كل بطل يتعلم من المحاولة. اضغط لإعادة التحدي والفوز!";
+            }
+            endOverlay.classList.remove('hidden');
+        }
+
+        // رسم صورة الأمير عبد القادر كعلامة مائية فنية (Filigrane) في خلفية الساحة
+        function drawAmirWatermark(w, h) {
+            ctx.save();
+            const cx = w / 2;
+            const cy = h * 0.52;
+            const scale = Math.min(w, h) / 360;
+
+            ctx.translate(cx, cy);
+            ctx.scale(scale, scale);
+            ctx.globalAlpha = 0.13; // شفافية هادئة كعلامة مائية
+
+            // إطار دائري مزخرف
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, 118, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, 110, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // البرنوس والعباءة المهيبة للأمير
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.moveTo(-78, 92);
+            ctx.quadraticCurveTo(-72, 18, -32, -5);
+            ctx.lineTo(32, -5);
+            ctx.quadraticCurveTo(72, 18, 78, 92);
+            ctx.closePath();
+            ctx.fill();
+
+            // ثنايا البرنوس
+            ctx.strokeStyle = '#fef3c7';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-24, 5);
+            ctx.quadraticCurveTo(-18, 48, -28, 90);
+            ctx.moveTo(24, 5);
+            ctx.quadraticCurveTo(18, 48, 28, 90);
+            ctx.stroke();
+
+            // الوجه واللحية الوقورة للأمير عبد القادر
+            ctx.fillStyle = '#92400e';
+            ctx.beginPath();
+            ctx.ellipse(0, -34, 24, 30, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // اللحية المميزة للأمير
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath();
+            ctx.moveTo(-22, -32);
+            ctx.quadraticCurveTo(-24, -4, 0, 4);
+            ctx.quadraticCurveTo(24, -4, 22, -32);
+            ctx.quadraticCurveTo(14, -18, 0, -16);
+            ctx.quadraticCurveTo(-14, -18, -22, -32);
+            ctx.fill();
+
+            // الشارب والحاجبان والعينان
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(-12, -39); ctx.lineTo(-4, -38);
+            ctx.moveTo(4, -38); ctx.lineTo(12, -39);
+            ctx.stroke();
+
+            // العمامة البيضاء والعقال البني المبروم (رمز الأمير عبد القادر)
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.ellipse(0, -58, 30, 20, 0, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // لفّات العقال المزدوجة
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(-28, -56);
+            ctx.quadraticCurveTo(0, -51, 28, -56);
+            ctx.moveTo(-29, -62);
+            ctx.quadraticCurveTo(0, -57, 29, -62);
+            ctx.stroke();
+
+            // نص تذكاري مقوّس أسفل البورتريه
+            ctx.fillStyle = '#451a03';
+            ctx.font = '900 13px Cairo, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('الأمير عبد القادر الجزائري', 0, 106);
+
+            // علامة SM/1628 مدمجة أيضاً في قلب العلامة المائية
+            ctx.font = '800 11px Cairo, sans-serif';
+            ctx.fillText('SM/1628', 0, 128);
+
+            ctx.restore();
+        }
+
+        // رسم الخلفية التاريخية (سهل غريس، شجرة الدردار، الخيام)
+        function drawBackground() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // السماء
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.72);
+            skyGrad.addColorStop(0, '#bae6fd');
+            skyGrad.addColorStop(1, '#fef3c7');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, w, h);
+
+            // السحب المتحركة
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+            clouds.forEach(c => {
+                c.x += c.speed;
+                if (c.x > w + 80) c.x = -80;
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, 22 * c.scale, 0, Math.PI * 2);
+                ctx.arc(c.x + 20 * c.scale, c.y - 6 * c.scale, 26 * c.scale, 0, Math.PI * 2);
+                ctx.arc(c.x + 42 * c.scale, c.y, 20 * c.scale, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // رسم صورة الأمير عبد القادر كـ Filigrane في خلفية المشهد
+            drawAmirWatermark(w, h);
+
+            // الجبال البعيدة (أطلس التلي / سهل غريس)
+            ctx.fillStyle = '#a7f3d0';
+            ctx.beginPath();
+            ctx.moveTo(0, h * 0.72);
+            ctx.quadraticCurveTo(w * 0.25, h * 0.52, w * 0.5, h * 0.68);
+            ctx.quadraticCurveTo(w * 0.75, h * 0.5, w, h * 0.66);
+            ctx.lineTo(w, h);
+            ctx.lineTo(0, h);
+            ctx.fill();
+
+            // الأرض الخضراء والذهبية
+            const groundGrad = ctx.createLinearGradient(0, h * 0.66, 0, h);
+            groundGrad.addColorStop(0, '#10b981');
+            groundGrad.addColorStop(1, '#065f46');
+            ctx.fillStyle = groundGrad;
+            ctx.fillRect(0, h * 0.68, w, h * 0.32);
+
+            // رسم شجرة الدردار الرمزية على الجانب الأيسر
+            drawTree(w * 0.08, h * 0.72);
+
+            // رسم خيمة من خيام الزمالة على الجانب الأيمن
+            drawTent(w * 0.88, h * 0.73);
+        }
+
+        function drawTree(x, y) {
+            // جذع الشجرة
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(x - 8, y - 45, 16, 48);
+            // أوراق الشجرة
+            ctx.fillStyle = '#047857';
+            ctx.beginPath();
+            ctx.arc(x, y - 55, 32, 0, Math.PI * 2);
+            ctx.arc(x - 20, y - 42, 22, 0, Math.PI * 2);
+            ctx.arc(x + 20, y - 42, 22, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawTent(x, y) {
+            ctx.fillStyle = '#fef3c7';
+            ctx.strokeStyle = '#92400e';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - 35, y);
+            ctx.lineTo(x, y - 35);
+            ctx.lineTo(x + 35, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // هلال صغير فوق الخيمة
+            ctx.fillStyle = '#d97706';
+            ctx.beginPath();
+            ctx.arc(x, y - 40, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // رسم الأهداف الثلاثة (اللوحات الخشبية/الدرع التي تحمل الخيارات)
+        function drawTargets(time) {
+            targets.forEach(t => {
+                // حركة طفو خفيفة لجعل المشهد حيوياً
+                t.y = t.baseY + Math.sin(time * 0.003 + t.phase) * 5;
+
+                const left = t.x - t.width / 2;
+                const top = t.y - t.height / 2;
+
+                // العمود الخشبي الحامل للهدف
+                ctx.fillStyle = '#78350f';
+                ctx.fillRect(t.x - 5, t.y + t.height / 2 - 2, 10, 35);
+
+                // تحديد لون اللوحة حسب الحالة
+                let bgFill = '#fffbeb';
+                let borderCol = '#b45309';
+                if (t.hitState === 'correct') {
+                    bgFill = '#d1fae5';
+                    borderCol = '#059669';
+                } else if (t.hitState === 'wrong') {
+                    bgFill = '#fee2e2';
+                    borderCol = '#dc2626';
+                }
+
+                // رسم جسم الهدف المستدير الزوايا
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,0.25)';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetY = 4;
+
+                ctx.fillStyle = bgFill;
+                ctx.strokeStyle = borderCol;
+                ctx.lineWidth = 4;
+                roundRect(ctx, left, top, t.width, t.height, 16);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+
+                // رسم دائرة التصويب الصغيرة أعلى الهدف
+                ctx.beginPath();
+                ctx.arc(t.x, top, 11, 0, Math.PI * 2);
+                ctx.fillStyle = '#dc2626';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(t.x, top, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(t.x, top, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#dc2626';
+                ctx.fill();
+
+                // كتابة نص الخيار داخل الهدف مع التفاف الأسطر تلقائياً
+                ctx.fillStyle = '#064e3b';
+                const fontSize = Math.max(12, Math.min(16, t.width * 0.075));
+                ctx.font = `800 ${fontSize}px Cairo, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                wrapText(ctx, t.text, t.x, t.y + 3, t.width - 18, fontSize + 4);
+            });
+        }
+
+        // رسم الجندي الجزائري بلباس جيش الأمير عبد القادر في أسفل الشاشة
+        function drawAlgerianSoldier() {
+            const sx = canvas.width / 2;
+            const sy = canvas.height - 52;
+
+            // حساب زاوية دوران البندقية/القوس نحو مؤشر التصويب
+            const angle = Math.atan2(aimY - (sy - 15), aimX - sx);
+
+            ctx.save();
+            ctx.translate(sx, sy);
+
+            // ظل الجندي على الأرض
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.beginPath();
+            ctx.ellipse(0, 42, 34, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // البرنوس الأبيض الجزائري التقليدي
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-26, 38);
+            ctx.quadraticCurveTo(-30, 0, -14, -14);
+            ctx.lineTo(14, -14);
+            ctx.quadraticCurveTo(30, 0, 26, 38);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // الصدرية الخضراء المطرزة بالذهبي (زي جيش الأمير)
+            ctx.fillStyle = '#047857';
+            ctx.beginPath();
+            ctx.moveTo(-14, -12);
+            ctx.lineTo(14, -12);
+            ctx.lineTo(16, 26);
+            ctx.lineTo(-16, 26);
+            ctx.closePath();
+            ctx.fill();
+
+            // حزام أحمر تقليدي
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(-15, 16, 30, 7);
+
+            // تطريز ذهبي على الصدر
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-9, -6, 18, 18);
+
+            // الرأس والوجه
+            ctx.fillStyle = '#fed7aa';
+            ctx.beginPath();
+            ctx.arc(0, -25, 13, 0, Math.PI * 2);
+            ctx.fill();
+
+            // العمامة البيضاء والعقال الجزائري
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(0, -34, 16, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#92400e';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(-14, -34);
+            ctx.lineTo(14, -34);
+            ctx.stroke();
+
+            // العينان والابتسامة
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.arc(-4, -25, 1.8, 0, Math.PI * 2);
+            ctx.arc(4, -25, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#9a3412';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, -22, 4, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.stroke();
+
+            // السلاح (بندقية تقليدية مزخرفة تصوّب نحو الهدف)
+            ctx.save();
+            ctx.translate(0, -4);
+            ctx.rotate(angle);
+
+            // خشب البندقية
+            ctx.fillStyle = '#92400e';
+            ctx.fillRect(-12, -4, 44, 8);
+            // فوهة معدنية
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(28, -3, 18, 6);
+            // حلقات ذهبية
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(10, -4.5, 4, 9);
+            ctx.fillRect(24, -4.5, 4, 9);
+
+            ctx.restore();
+            ctx.restore();
+        }
+
+        // رسم مؤشر التصويب (Crosshair)
+        function drawCrosshair() {
+            if (gameState !== 'PLAYING') return;
+            ctx.save();
+            ctx.translate(aimX, aimY);
+
+            ctx.strokeStyle = 'rgba(220, 38, 38, 0.85)';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, 16, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(-22, 0); ctx.lineTo(-8, 0);
+            ctx.moveTo(8, 0); ctx.lineTo(22, 0);
+            ctx.moveTo(0, -22); ctx.lineTo(0, -8);
+            ctx.moveTo(0, 8); ctx.lineTo(0, 22);
+            ctx.stroke();
+
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(0, 0, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // تحديث ورسم المقذوفات
+        function updateAndDrawProjectiles() {
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // رسم المقذوف (كرة ضوئية ذهبية سريعة)
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle);
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(0, 0, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fef3c7';
+                ctx.beginPath();
+                ctx.arc(2, 0, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // التحقق من الاصطدام بأحد الأهداف
+                let hitTarget = null;
+                for (const t of targets) {
+                    if (
+                        p.x >= t.x - t.width / 2 &&
+                        p.x <= t.x + t.width / 2 &&
+                        p.y >= t.y - t.height / 2 - 10 &&
+                        p.y <= t.y + t.height / 2
+                    ) {
+                        hitTarget = t;
+                        break;
+                    }
+                }
+
+                if (hitTarget) {
+                    projectiles.splice(i, 1);
+                    handleTargetHit(hitTarget);
+                    continue;
+                }
+
+                // إزالة المقذوف إذا خرج عن حدود الشاشة
+                if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        // تحديث ورسم الجزيئات الاحتفالية
+        function updateAndDrawParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.vy += 0.15;
+                pt.life -= 0.025;
+
+                if (pt.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = pt.life;
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // دوال مساعدة للرسم على Canvas
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let lines = [];
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+                const word = words[i];
+                const width = context.measureText(currentLine + " " + word).width;
+                if (width < maxWidth) {
+                    currentLine += " " + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            lines.push(currentLine);
+
+            const startY = y - ((lines.length - 1) * lineHeight) / 2;
+            lines.forEach((line, index) => {
+                context.fillText(line, x, startY + index * lineHeight);
+            });
+        }
+
+        // حلقة الرسم الرئيسية
+        function gameLoop(timestamp) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBackground();
+            drawTargets(timestamp || 0);
+            updateAndDrawProjectiles();
+            drawAlgerianSoldier();
+            drawCrosshair();
+            updateAndDrawParticles();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // أحداث التفاعل (الفأرة واللمس)
+        function getCanvasCoords(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const pos = getCanvasCoords(e.clientX, e.clientY);
+            aimX = pos.x;
+            aimY = pos.y;
+        });
+
+        canvas.addEventListener('click', (e) => {
+            const pos = getCanvasCoords(e.clientX, e.clientY);
+            // توجيه السهم مباشرة نحو مركز الهدف إذا تم النقر داخله لضمان دقة التصويب للأطفال
+            let snapped = false;
+            for (const t of targets) {
+                if (
+                    pos.x >= t.x - t.width / 2 &&
+                    pos.x <= t.x + t.width / 2 &&
+                    pos.y >= t.y - t.height / 2 - 12 &&
+                    pos.y <= t.y + t.height / 2 + 10
+                ) {
+                    fireAt(t.x, t.y);
+                    snapped = true;
+                    break;
+                }
+            }
+            if (!snapped) {
+                fireAt(pos.x, pos.y);
+            }
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.touches.length > 0) {
+                const touch = e.touches[0];
+                const pos = getCanvasCoords(touch.clientX, touch.clientY);
+                let snapped = false;
+                for (const t of targets) {
+                    if (
+                        pos.x >= t.x - t.width / 2 &&
+                        pos.x <= t.x + t.width / 2 &&
+                        pos.y >= t.y - t.height / 2 - 15 &&
+                        pos.y <= t.y + t.height / 2 + 15
+                    ) {
+                        fireAt(t.x, t.y);
+                        snapped = true;
+                        break;
+                    }
+                }
+                if (!snapped) {
+                    fireAt(pos.x, pos.y);
+                }
+            }
+        }, { passive: false });
+
+        // أزرار التحكم
+        document.getElementById('startBtn').addEventListener('click', () => {
+            initAudio();
+            startGame();
+        });
+
+        soldierNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                initAudio();
+                startGame();
+            }
+        });
+
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            gameState = 'PLAYING';
+            startGame();
+        });
+
+        document.getElementById('restartTopBtn').addEventListener('click', () => {
+            if (gameState === 'START') {
+                soldierNameInput.focus();
+                return;
+            }
+            gameState = 'PLAYING';
+            startGame();
+        });
+
+        document.getElementById('soundToggle').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundIcon').textContent = soundEnabled ? '🔊' : '🔇';
+            document.getElementById('soundText').textContent = soundEnabled ? 'الصوت مفعل' : 'الصوت مكتوم';
+        });
+
+        // تشغيل التهيئة عند اكتمال تحميل الصفحة
+        window.onload = function () {
+            resizeCanvas();
+            updateHeartsUI();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
